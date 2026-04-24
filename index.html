@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seamless Image Converter</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: radial-gradient(circle at top right, #1e293b, transparent 40%),
+                              radial-gradient(circle at bottom left, #1e293b, transparent 40%);
+        }
+
+        .converter-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .file-upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .file-upload-label:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        select {
+            background: transparent;
+            color: var(--text-main);
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        select option {
+            background: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background-color: #475569;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #fileName {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            color: var(--primary);
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="converter-card">
+        <h1>Format Shifter</h1>
+        <p class="subtitle">Fast, local JPG ⇄ PNG conversion</p>
+
+        <div class="file-upload-wrapper">
+            <label class="file-upload-label" for="imageInput">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 10px; color: var(--text-muted);">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span id="uploadText">Click to choose an image</span>
+            </label>
+            <input type="file" id="imageInput" accept=".jpg, .jpeg, .png">
+            <div id="fileName"></div>
+        </div>
+
+        <div class="controls">
+            <span>Convert to:</span>
+            <select id="formatSelect">
+                <option value="image/png">PNG (.png)</option>
+                <option value="image/jpeg">JPG (.jpg)</option>
+            </select>
+        </div>
+
+        <button id="convertBtn" disabled>Convert & Download</button>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const uploadText = document.getElementById('uploadText');
+        const fileNameDisplay = document.getElementById('fileName');
+        const convertBtn = document.getElementById('convertBtn');
+        const formatSelect = document.getElementById('formatSelect');
+
+        let currentImage = null;
+        let originalFileName = "";
+
+        // Handle file selection
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                originalFileName = file.name.split('.')[0];
+                uploadText.textContent = "Image selected";
+                fileNameDisplay.textContent = file.name;
+                
+                // Auto-select the opposite format
+                if (file.type === 'image/jpeg') {
+                    formatSelect.value = 'image/png';
+                } else if (file.type === 'image/png') {
+                    formatSelect.value = 'image/jpeg';
+                }
+
+                // Read the file as a data URL to render in an Image object
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        currentImage = img;
+                        convertBtn.disabled = false;
+                    }
+                    img.src = event.target.result;
+                }
+                reader.readAsDataURL(file);
+            } else {
+                convertBtn.disabled = true;
+                currentImage = null;
+                uploadText.textContent = "Click to choose an image";
+                fileNameDisplay.textContent = "";
+            }
+        });
+
+        // Handle conversion
+        convertBtn.addEventListener('click', function() {
+            if (!currentImage) return;
+
+            const targetFormat = formatSelect.value;
+            const extension = targetFormat === 'image/jpeg' ? '.jpg' : '.png';
+            
+            // Create a temporary canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = currentImage.width;
+            canvas.height = currentImage.height;
+            const ctx = canvas.getContext('2d');
+
+            // If converting to JPG, fill a white background first (since JPG doesn't support transparency)
+            if (targetFormat === 'image/jpeg') {
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Draw the image onto the canvas
+            ctx.drawImage(currentImage, 0, 0);
+
+            // Export the canvas data to the new format
+            const dataUrl = canvas.toDataURL(targetFormat, 0.92); // 0.92 is quality for JPGs
+
+            // Trigger the download automatically
+            const link = document.createElement('a');
+            link.download = `${originalFileName}_converted${extension}`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
+</body>
+</html>
